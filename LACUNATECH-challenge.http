@@ -1,6 +1,17 @@
-@LACUNATECH_challenge_HostAddress = http://localhost:1500
+@host = http://localhost:1500
 
-GET {{LACUNATECH_challenge_HostAddress}}/weatherforecast/
+GET {{host}}
 Accept: application/json
 
+
 ###
+POST {{host}}/sum
+Content-Type: application/json
+
+{
+  "a": 10,
+  "b": 20
+}
+
+
+
