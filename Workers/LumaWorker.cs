@@ -10,6 +10,9 @@ public class LumaWorker : BackgroundService
 
     private const string Username = "lucazcode";
     private const string Email = "lucazcode@gmail.com";
+    
+    // private const string StartEndpoint = "/api/start";    // nível 1
+    private const string StartEndpoint = "/api/start/2";
 
     public LumaWorker(IServiceScopeFactory scopeFactory, ProbeClockStore store) // ← único parâmetro
     {
@@ -57,7 +60,7 @@ public class LumaWorker : BackgroundService
         _store.Clear();
         
         Console.WriteLine("[Worker] Autenticando...");
-        var startResponse = await api.StartAsync(Username, Email);
+        var startResponse = await api.StartAsync(Username, Email, StartEndpoint);
 
         if (startResponse.Code != "Success")
             throw new Exception($"Start falhou: {startResponse.Message}");

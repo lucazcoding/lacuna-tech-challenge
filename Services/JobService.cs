@@ -38,7 +38,7 @@ public class JobService
                 throw new Exception($"Sonda '{job.ProbeName}' não encontrada na lista!");
 
             // 3. Pega a hora sincronizada e o round-trip dessa sonda
-            long probeNowTicks = _sync.GetProbeNow(probe.Id);
+            long probeNowTicks = _sync.GetProbeNow(probe.Id, probe.TimeDilationFactor);
             long roundTrip = _sync.GetRoundTrip(probe.Id);
 
             // 4. Codifica a hora no formato que a sonda espera

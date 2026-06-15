@@ -16,14 +16,14 @@ public class LumaApiClient
     }
 
     // ─── 1. START ────────────────────────────────────────────────
-    public async Task<StartResponse> StartAsync(string username, string email)
+    public async Task<StartResponse> StartAsync(string username, string email, string endpoint)
     {
         var body = new { username, email };
 
-        var response = await _http.PostAsJsonAsync("/api/start", body);
+        var response = await _http.PostAsJsonAsync(endpoint, body);
         response.EnsureSuccessStatusCode();
 
-        return await response.Content.ReadFromJsonAsync<StartResponse>();
+        return await response.Content.ReadFromJsonAsync<StartResponse>() ?? throw new Exception("StartAsync: resposta nula da API");
     }
 
     // ─── 2. LIST PROBES ──────────────────────────────────────────
@@ -34,7 +34,7 @@ public class LumaApiClient
         var response = await _http.SendAsync(request);
         response.EnsureSuccessStatusCode();
 
-        return await response.Content.ReadFromJsonAsync<ProbeListResponse>();
+        return await response.Content.ReadFromJsonAsync<ProbeListResponse>() ?? throw new Exception("GetProbesAsync: resposta nula da API");
     }
 
     // ─── 3. SYNC ─────────────────────────────────────────────────
@@ -49,7 +49,7 @@ public class LumaApiClient
 
         response.EnsureSuccessStatusCode();
 
-        var data = await response.Content.ReadFromJsonAsync<SyncResponse>();
+        var data = await response.Content.ReadFromJsonAsync<SyncResponse>() ?? throw new Exception("SyncAsync: resposta nula da API");
         return (data, t0, t3);
     }
 
@@ -61,7 +61,7 @@ public class LumaApiClient
         var response = await _http.SendAsync(request);
         response.EnsureSuccessStatusCode();
 
-        return await response.Content.ReadFromJsonAsync<JobResponse>();
+        return await response.Content.ReadFromJsonAsync<JobResponse>() ?? throw new Exception("TakeJobAsync: resposta nula da API");
     }
 
     // ─── 5. CHECK JOB ────────────────────────────────────────────
@@ -79,7 +79,7 @@ public class LumaApiClient
         var response = await _http.SendAsync(request);
         response.EnsureSuccessStatusCode();
 
-        return await response.Content.ReadFromJsonAsync<CheckJobResponse>();
+        return await response.Content.ReadFromJsonAsync<CheckJobResponse>() ?? throw new Exception("CheckJobAsync: resposta nula da API");
     }
 
     // ─── HELPER PRIVADO ──────────────────────────────────────────

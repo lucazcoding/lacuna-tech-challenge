@@ -20,6 +20,8 @@ public class SyncService
     {
         foreach (var probe in probes)
         {
+            Console.WriteLine($"[Probe] {probe.Name} | Encoding: {probe.Encoding} | TimeDilationFactor: {probe.TimeDilationFactor ?? 1.0}");
+            
             Console.WriteLine($"[Sync] Iniciando sincronização: {probe.Name}");
             await SyncProbeAsync(probe, token);
             Console.WriteLine($"[Sync] {probe.Name} sincronizada!");
@@ -31,11 +33,24 @@ public class SyncService
         if (!_store.Contains(probe.Id))
             _store.Set(probe.Id, new ProbeClockState());
 
-        long? previousOffset = null;
+        const long RoundTripThreshold = 100 * 10_000; // 100ms — ajustável
+
+        long bestOffset = 0;
+        long bestRoundTrip = long.MaxValue;
+        long bestSyncedAt = 0;
+        int attempts = 0;
+        const int MaxAttempts = 20;
 
         while (true)
         {
             var (syncData, t0, t3) = await _api.SyncAsync(probe.Id, token);
+
+            if (syncData.Code == "ProbeUnreachable")
+            {
+                Console.WriteLine($"[Sync] {probe.Name} | ProbeUnreachable - aguardando 5s...");
+                await Task.Delay(TimeSpan.FromSeconds(5));
+                continue;
+            }
 
             if (syncData.Code != "Success" || syncData.T1 is null || syncData.T2 is null)
                 throw new Exception($"Sync falhou para {probe.Name}. Code: {syncData.Code}");
@@ -48,26 +63,40 @@ public class SyncService
             long newOffset = (fator1 + fator2) / 2;
             long roundTrip = (t3 - t0) - (t2 - t1);
 
-            var state = _store.Get(probe.Id);
-            state.TimeOffset = newOffset;
-            state.LastRoundTrip = roundTrip;
-
             Console.WriteLine($"[Sync] {probe.Name} | newOffset: {newOffset} ticks | roundTrip: {roundTrip} ticks");
 
-            if (previousOffset.HasValue &&
-                Math.Abs(newOffset - previousOffset.Value) < FiveMillisecondsTicks)
+            if (roundTrip < bestRoundTrip)
             {
-                break;
+                bestOffset = newOffset;
+                bestRoundTrip = roundTrip;
+                bestSyncedAt = DateTimeOffset.UtcNow.Ticks;
             }
 
-            previousOffset = newOffset;
+            attempts++;
+
+            if (roundTrip < RoundTripThreshold || attempts >= MaxAttempts)
+                break;
         }
+
+        var state = _store.Get(probe.Id);
+        state.TimeOffset = bestOffset;
+        state.LastRoundTrip = bestRoundTrip;
+        state.SyncedAtTicks = bestSyncedAt;
     }
-    // Esses dois métodos não mudam nada — só delegam pro store
-    public long GetProbeNow(string probeId)
+    
+    public long GetProbeNow(string probeId, double? timeDilationFactor)
     {
         var state = _store.Get(probeId);
-        return DateTimeOffset.UtcNow.Ticks + state.TimeOffset;
+
+        long S = state.SyncedAtTicks;
+        long D = state.TimeOffset;
+        long M_agora = DateTimeOffset.UtcNow.Ticks;
+        double F = timeDilationFactor ?? 1.0;
+
+        long decorridoPraMim = M_agora - S;
+        long decorridoPraSonda = (long)(decorridoPraMim / F);
+
+        return (S + D) + decorridoPraSonda;
     }
 
     public long GetRoundTrip(string probeId) =>
